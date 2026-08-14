@@ -1,0 +1,89 @@
+@baseUrl = http://localhost:5000
+@token =92fa55ccd75015770b6929207bb67c82743b777393a1c3c3c629f926022bae1f
+@sessionId = 5
+POST {{baseUrl}}/api/signup
+Content-Type: application/json
+
+{
+  
+  "fullName": "siva",
+  "email": "siva@gmail.com",
+  "password": "123@123"
+}
+
+### Signin
+POST {{baseUrl}}/api/signin
+Content-Type: application/json
+
+{
+  "email": "siva@gmail.com",
+  "password": "123@123"
+}
+
+### Get fields
+GET {{baseUrl}}/api/fields
+
+### Get rounds
+GET {{baseUrl}}/api/rounds
+
+### Get questions by field and round
+GET {{baseUrl}}/api/questions?fieldId=1&roundId=5
+### Get interview questions
+GET {{baseUrl}}/api/interview/questions?roleName=Frontend%20Developer&skill=React&difficulty=Easy
+
+### Save interview session
+POST {{baseUrl}}/api/interview/sessions
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "userId": 14,
+  "roleName": "Frontend Developer",
+  "skill": "React",
+  "difficulty": "Easy",
+  "results": [
+    {
+      "roundId": "aptitude",
+      "score": 1,
+      "total": 1,
+      "answers": {
+        "0": "12"
+      },
+      "questions": [
+        {
+          "id": 1
+        }
+      ]
+    }
+  ]
+}
+
+### Get dashboard
+GET {{baseUrl}}/api/users/14/dashboard
+Authorization: Bearer {{token}}
+
+### Get session history
+GET {{baseUrl}}/api/users/14/sessions
+Authorization: Bearer {{token}}
+
+### Get one session analysis
+GET {{baseUrl}}/api/users/14/sessions/{{sessionId}}
+Authorization: Bearer {{token}}
+
+### Get profile
+GET {{baseUrl}}/api/users/14/profile
+Authorization: Bearer {{token}}
+
+### Update profile
+PATCH {{baseUrl}}/api/users/14/profile
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fullName": "siva",
+  "email": "siva@gmail.com",
+  "careerGoal": "Frontend Developer",
+  "level": "Beginner",
+  "weeklyTarget": 5,
+  "profilePicture": ""
+}
