@@ -1,6 +1,8 @@
 @baseUrl = http://localhost:5000
-@token =92fa55ccd75015770b6929207bb67c82743b777393a1c3c3c629f926022bae1f
+@userId = 14
 @sessionId = 5
+
+### Signup
 POST {{baseUrl}}/api/signup
 Content-Type: application/json
 
@@ -12,6 +14,9 @@ Content-Type: application/json
 }
 
 ### Signin
+# This response sets an HttpOnly authToken cookie.
+# After this request, the REST client should send that cookie automatically
+# for the protected requests below.
 POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
@@ -19,6 +24,12 @@ Content-Type: application/json
   "email": "siva@gmail.com",
   "password": "123@123"
 }
+
+### Check current logged-in user
+GET {{baseUrl}}/api/me
+
+### Sign out
+POST {{baseUrl}}/api/signout
 
 ### Get fields
 GET {{baseUrl}}/api/fields
@@ -33,11 +44,10 @@ GET {{baseUrl}}/api/interview/questions?roleName=Frontend%20Developer&skill=Reac
 
 ### Save interview session
 POST {{baseUrl}}/api/interview/sessions
-Authorization: Bearer {{token}}
 Content-Type: application/json
 
 {
-  "userId": 14,
+  "userId": {{userId}},
   "roleName": "Frontend Developer",
   "skill": "React",
   "difficulty": "Easy",
@@ -59,24 +69,19 @@ Content-Type: application/json
 }
 
 ### Get dashboard
-GET {{baseUrl}}/api/users/14/dashboard
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/api/users/{{userId}}/dashboard
 
 ### Get session history
-GET {{baseUrl}}/api/users/14/sessions
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/api/users/{{userId}}/sessions
 
 ### Get one session analysis
-GET {{baseUrl}}/api/users/14/sessions/{{sessionId}}
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/api/users/{{userId}}/sessions/{{sessionId}}
 
 ### Get profile
-GET {{baseUrl}}/api/users/14/profile
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/api/users/{{userId}}/profile
 
 ### Update profile
-PATCH {{baseUrl}}/api/users/14/profile
-Authorization: Bearer {{token}}
+PATCH {{baseUrl}}/api/users/{{userId}}/profile
 Content-Type: application/json
 
 {
@@ -84,6 +89,5 @@ Content-Type: application/json
   "email": "siva@gmail.com",
   "careerGoal": "Frontend Developer",
   "level": "Beginner",
-  "weeklyTarget": 5,
   "profilePicture": ""
 }

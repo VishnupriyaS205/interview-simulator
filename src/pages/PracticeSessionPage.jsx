@@ -589,7 +589,6 @@ function normalizeSavedRounds(rounds) {
 export default function PracticeSessionPage() {
   const { state } = useLocation();
   const user = JSON.parse(localStorage.getItem("interviewUser"));
-  const authToken = localStorage.getItem("authToken");
   const rawSavedProgress = state?.fresh ? null : getSavedPracticeProgress();
   const savedProgress =
     rawSavedProgress?.userId === user?.id ? rawSavedProgress : null;
@@ -656,25 +655,48 @@ export default function PracticeSessionPage() {
       try {
         const data = await fetchInterviewQuestionsOnce(params);
         const aiRounds = data.rounds || [];
-        const analysisRound = fallbackRounds.find(
+        const fallbackAnalysisRound = fallbackRounds.find(
           (round) => round.id === "video",
         );
-        const orderedRounds = ["aptitude", "english", "technical"]
+        const orderedRounds = ["aptitude", "english", "technical", "video"]
           .map((roundId) => aiRounds.find((round) => round.id === roundId))
           .filter(Boolean);
-        const hasAiRounds = orderedRounds.every(
-          (round) => round.questions.length === 15,
+        const hasAiRounds =
+          orderedRounds.length === 4 &&
+          orderedRounds.every((round) =>
+            round.id === "video"
+              ? round.questions.length === 5
+              : round.questions.length === 15,
+          );
+        const nonVideoRounds = orderedRounds.filter(
+          (round) => round.id !== "video",
         );
+        const mixedRounds =
+          nonVideoRounds.length === 3 && fallbackAnalysisRound
+            ? [...nonVideoRounds, fallbackAnalysisRound]
+            : fallbackRounds;
 
         setRounds(
-          hasAiRounds && analysisRound
+          hasAiRounds
             ? [
                 orderedRounds[0],
                 orderedRounds[1],
                 orderedRounds[2],
-                analysisRound,
+                {
+                  ...orderedRounds[3],
+                  type: "video",
+                  questions: orderedRounds[3].questions.map((question) => ({
+                    ...question,
+                    type: "video",
+                    options: [],
+                    answer: "Structured interview answer",
+                    explanation:
+                      question.explanation ||
+                      "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
+                  })),
+                },
               ]
-            : fallbackRounds,
+            : mixedRounds,
         );
       } catch (err) {
         console.error("Interview Questions Fetch Error:", err);
@@ -823,7 +845,6 @@ export default function PracticeSessionPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
           },
           body: JSON.stringify({
             answers: items.map((item) => ({
@@ -856,7 +877,7 @@ export default function PracticeSessionPage() {
         return fallbackAnalyses;
       }
     },
-    [authToken, roleName, skill],
+    [roleName, skill],
   );
 
   const finishRound = useCallback(async () => {
@@ -953,7 +974,7 @@ export default function PracticeSessionPage() {
         return;
       }
 
-      if (!user?.id || !authToken) {
+      if (!user?.id) {
         setMediaError("Sign in with a registered account before starting the video interview.");
         return;
       }
@@ -989,7 +1010,7 @@ export default function PracticeSessionPage() {
       }
       setIsRecording(false);
     };
-  }, [authToken, isVideoRound, user?.id, view]);
+  }, [isVideoRound, user?.id, view]);
 
   useEffect(() => {
     if (view !== "questions") {
@@ -1166,7 +1187,6 @@ export default function PracticeSessionPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
           },
           body: JSON.stringify({
             userId: user.id,

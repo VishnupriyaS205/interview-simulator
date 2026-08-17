@@ -18,11 +18,7 @@ export default function ProgressPage() {
 
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/users/${user.id}/progress`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-        });
+        const response = await fetch(`/api/users/${user.id}/progress`);
         const data = await response.json();
 
         if (!response.ok) {

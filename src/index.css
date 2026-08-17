@@ -96,18 +96,22 @@ button {
   min-width: 0;
 }
 
-.brand-mark,
-.nav-icon {
+.brand-mark {
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
   width: 38px;
   height: 38px;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: white;
-  font-size: 0.78rem;
-  font-weight: 800;
+  overflow: hidden;
+  border: 1px solid rgba(37, 99, 235, 0.16);
+  background: white;
+}
+
+.brand-mark img {
+  width: 92%;
+  height: 92%;
+  object-fit: contain;
 }
 
 .brand strong {
@@ -145,10 +149,24 @@ button {
 }
 
 .nav-icon {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
   width: 30px;
   height: 30px;
+  border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.12);
-  font-size: 0.75rem;
+  color: currentColor;
+}
+
+.nav-icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .sidebar-card {
@@ -536,6 +554,13 @@ textarea:focus {
 .file-name {
   color: var(--muted);
   font-weight: 700;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
 }
 
 .password-reset-fields {

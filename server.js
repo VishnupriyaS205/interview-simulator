@@ -9,7 +9,8 @@ import { GoogleGenAI } from "@google/genai";
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
 // PostgreSQL Connection Pool
 const pool = new pg.Pool({
@@ -93,7 +94,9 @@ function sleep(ms) {
 function isRateLimitError(err) {
   const status = err?.status || err?.code || err?.response?.status;
   const message = String(err?.message || "").toLowerCase();
-  return status === 429 || message.includes("429") || message.includes("rate limit");
+  return (
+    status === 429 || message.includes("429") || message.includes("rate limit")
+  );
 }
 
 async function generateGeminiContentWithRetry(key, request) {
@@ -163,6 +166,10 @@ function getRoundTitle(roundKey) {
 
   if (roundKey === "english") {
     return "English Communication";
+  }
+
+  if (roundKey === "video") {
+    return "AI Interview Analysis";
   }
 
   return "Technical Round";
@@ -390,6 +397,38 @@ function toPublicUser(row) {
   };
 }
 
+function getCookieValue(req, name) {
+  const cookies = req.headers.cookie || "";
+
+  return cookies
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.slice(name.length + 1);
+}
+
+function getAuthTokenFromRequest(req) {
+  return getCookieValue(req, "authToken") || "";
+}
+
+function setAuthCookie(res, token) {
+  const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
+
+  res.setHeader(
+    "Set-Cookie",
+    `authToken=${token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800${secureCookie}`,
+  );
+}
+
+function clearAuthCookie(res) {
+  const secureCookie = process.env.NODE_ENV === "production" ? "; Secure" : "";
+
+  res.setHeader(
+    "Set-Cookie",
+    `authToken=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0${secureCookie}`,
+  );
+}
+
 async function createAuthToken(userId) {
   const token = crypto.randomBytes(32).toString("hex");
 
@@ -402,8 +441,7 @@ async function createAuthToken(userId) {
 }
 
 async function requireAuth(req, res, next) {
-  const header = req.headers.authorization || "";
-  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  const token = getAuthTokenFromRequest(req);
 
   if (!token) {
     return res.status(401).json({ error: "Authentication required" });
@@ -424,6 +462,7 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: "Authentication required" });
     }
 
+    req.authToken = token;
     req.user = toPublicUser(rows[0]);
     next();
   } catch (err) {
@@ -489,7 +528,8 @@ app.post("/api/signup", async (req, res) => {
     const user = toPublicUser(rows[0]);
     const token = await createAuthToken(user.id);
 
-    res.status(201).json({ user, token });
+    setAuthCookie(res, token);
+    res.status(201).json({ user });
   } catch (err) {
     if (err.code === "23505") {
       return res
@@ -541,11 +581,34 @@ app.post("/api/signin", async (req, res) => {
     const publicUser = toPublicUser(user);
     const token = await createAuthToken(publicUser.id);
 
-    res.json({ user: publicUser, token });
+    setAuthCookie(res, token);
+    res.json({ user: publicUser });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Signin failed" });
   }
+});
+
+// POST /api/signout
+app.post("/api/signout", async (req, res) => {
+  const token = getAuthTokenFromRequest(req);
+
+  try {
+    if (token) {
+      await pool.query("DELETE FROM auth_sessions WHERE token = $1", [token]);
+    }
+
+    clearAuthCookie(res);
+    res.json({ message: "Signed out" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Signout failed" });
+  }
+});
+
+// GET /api/me
+app.get("/api/me", requireAuth, (req, res) => {
+  res.json({ user: req.user });
 });
 
 // GET /api/fields
@@ -657,12 +720,18 @@ Use topics like percentages, ratios, number series, directions, clocks, calendar
         ? `Create only English communication questions.
 Focus on grammar, sentence correction, vocabulary, professional phrases, interview communication, and clarity.
 Do not create coding or technical knowledge questions.`
+        : roundKey === "video"
+          ? `Create only open-ended interview speaking questions for AI Interview Analysis.
+Questions should help a candidate explain experience, motivation, debugging, project work, communication, and role fit.
+Do not create multiple-choice questions.`
         : `Create only technical interview questions based on this role and skill.
 Role: ${roleName}
 Skill: ${skill}`;
 
   const prompt = `
-Generate exactly 15 multiple-choice interview practice questions.
+Generate exactly ${roundKey === "video" ? 5 : 15} ${
+    roundKey === "video" ? "open-ended" : "multiple-choice"
+  } interview practice questions.
 
 Difficulty: ${difficulty}
 Round Type: ${roundKey}
@@ -671,10 +740,22 @@ Round instruction:
 ${roundInstruction}
 
 Rules:
-- Each question must have exactly 4 options.
-- Exactly one option must be correct.
+- ${
+    roundKey === "video"
+      ? "Each question must include exactly 3 technicalTerms."
+      : "Each question must have exactly 4 options."
+  }
+- ${
+    roundKey === "video"
+      ? "technicalTerms must be useful keywords that can appear in a strong answer."
+      : "Exactly one option must be correct."
+  }
 - Keep the language simple for students.
-- The answer must exactly match one of the options.
+- ${
+    roundKey === "video"
+      ? "Use questions that require a spoken or written interview answer."
+      : "The answer must exactly match one of the options."
+  }
 - Do not mix this round with another round type.
 - Return only JSON.
 
@@ -683,53 +764,102 @@ JSON shape:
   "questions": [
     {
       "question": "Question text",
-      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
-      "answer": "Correct option",
-      "explanation": "Short explanation"
+      ${
+        roundKey === "video"
+          ? '"technicalTerms": ["term one", "term two", "term three"]'
+          : '"options": ["Option 1", "Option 2", "Option 3", "Option 4"],\n      "answer": "Correct option",\n      "explanation": "Short explanation"'
+      }
     }
   ]
 }
 `;
 
-  const response = await generateGeminiContentWithRetry(
-    `questions:${roundKey}:${roleName}:${skill}:${difficulty}`,
-    {
-      model: GEMINI_MODEL,
-      config: {
-        systemInstruction: questionSystemPrompt,
-        responseMimeType: "application/json",
-      },
-      contents: prompt,
-    },
-  );
-  const data = parseAiJson(response.text);
+  let lastError;
 
-  if (!Array.isArray(data?.questions)) {
-    throw new Error(`Gemini did not return questions for ${roundKey}`);
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const response = await generateGeminiContentWithRetry(
+        `questions:${roundKey}:${roleName}:${skill}:${difficulty}:${attempt}`,
+        {
+          model: GEMINI_MODEL,
+          config: {
+            systemInstruction: questionSystemPrompt,
+            responseMimeType: "application/json",
+          },
+          contents:
+            attempt === 1
+              ? prompt
+              : `${prompt}
+
+Previous output was invalid. Return strict valid JSON only. Every string value must be inside double quotes. ${
+                  roundKey === "video"
+                    ? "technicalTerms must be an array of 3 strings."
+                    : "Options must be an array of 4 strings."
+                }`,
+        },
+      );
+      const data = parseAiJson(response.text);
+
+      if (!Array.isArray(data?.questions)) {
+        throw new Error(`Gemini did not return questions for ${roundKey}`);
+      }
+
+      const questions =
+        roundKey === "video"
+          ? data.questions
+              .map((item, index) => ({
+                id: `ai-video-${Date.now()}-${index}`,
+                question: String(item.question || "").trim(),
+                technicalTerms: Array.isArray(item.technicalTerms)
+                  ? item.technicalTerms
+                      .map((term) => String(term || "").toLowerCase().trim())
+                      .filter(Boolean)
+                      .slice(0, 3)
+                  : [],
+                type: "video",
+                options: [],
+                answer: "Structured interview answer",
+                explanation:
+                  "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
+              }))
+              .filter(
+                (item) => item.question && item.technicalTerms.length === 3,
+              )
+              .slice(0, 5)
+          : data.questions
+              .map((item, index) => normalizeAiQuestion(item, roundKey, index))
+              .filter(
+                (item) =>
+                  item.question &&
+                  item.options.length === 4 &&
+                  item.answer &&
+                  item.options.includes(item.answer),
+              )
+              .slice(0, 15);
+
+      const expectedQuestionCount = roundKey === "video" ? 5 : 15;
+
+      if (questions.length !== expectedQuestionCount) {
+        throw new Error(
+          `Gemini returned ${questions.length} valid ${roundKey} questions`,
+        );
+      }
+
+      return {
+        id: roundKey,
+        title: getRoundTitle(roundKey),
+        type: roundKey === "video" ? "video" : undefined,
+        questions,
+      };
+    } catch (err) {
+      lastError = err;
+      console.warn(
+        `Gemini ${roundKey} generation attempt ${attempt} failed: ${err.message}`,
+      );
+    }
   }
 
-  const questions = data.questions
-    .map((item, index) => normalizeAiQuestion(item, roundKey, index))
-    .filter(
-      (item) =>
-        item.question &&
-        item.options.length === 4 &&
-        item.answer &&
-        item.options.includes(item.answer),
-    )
-    .slice(0, 15);
-
-  if (questions.length !== 15) {
-    throw new Error(
-      `Gemini returned ${questions.length} valid ${roundKey} questions`,
-    );
-  }
-
-  return {
-    id: roundKey,
-    title: getRoundTitle(roundKey),
-    questions,
-  };
+  throw lastError;
 }
 
 app.get("/api/interview/questions", async (req, res) => {
@@ -751,15 +881,13 @@ app.get("/api/interview/questions", async (req, res) => {
       throw new Error("GEMINI_API_KEY is missing");
     }
 
-    const rounds = await Promise.all(
-      ["aptitude", "english", "technical"].map((roundKey) =>
-        generateGeminiRound(roundKey, roleName, skill, difficulty),
-      ),
-    );
+    const orderedRounds = [];
 
-    const orderedRounds = ["aptitude", "english", "technical"].map((roundKey) =>
-      rounds.find((round) => round.id === roundKey),
-    );
+    for (const roundKey of ["aptitude", "english", "technical", "video"]) {
+      orderedRounds.push(
+        await generateGeminiRound(roundKey, roleName, skill, difficulty),
+      );
+    }
 
     res.json({ rounds: orderedRounds, source: "gemini" });
   } catch (err) {
@@ -1217,7 +1345,9 @@ app.get(
         (sum, session) => sum + session.percentage,
         0,
       );
-      const bestScore = Math.max(...sessionScores.map((session) => session.percentage));
+      const bestScore = Math.max(
+        ...sessionScores.map((session) => session.percentage),
+      );
       const latest = sessionScores[0];
       const previous = sessionScores[1] || null;
       const first = sessionScores[sessionScores.length - 1];
@@ -1232,7 +1362,9 @@ app.get(
         const isAnalysisRound = roundKey === "video";
         current.attempted += 1;
         current.correct +=
-          !isAnalysisRound && answer.user_answer === answer.correct_answer ? 1 : 0;
+          !isAnalysisRound && answer.user_answer === answer.correct_answer
+            ? 1
+            : 0;
         map[roundKey] = current;
         return map;
       }, {});
@@ -1540,9 +1672,10 @@ app.patch(
     }
 
     if (password && password.length < 6) {
-      return res
-        .status(400)
-        .json({ error: "Password must be at least 6 characters" });
+      return res.status(400).json({
+        error: "Password must be at least 6 characters",
+        field: "password",
+      });
     }
 
     try {

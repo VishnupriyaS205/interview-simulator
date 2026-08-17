@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 export default function PasswordField({
+  autoComplete,
   className = "",
   error = "",
   id,
@@ -17,6 +18,7 @@ export default function PasswordField({
       <span className="password-field">
         <input
           id={id}
+          autoComplete={autoComplete}
           className={className}
           type={showPassword ? "text" : "password"}
           placeholder={placeholder}

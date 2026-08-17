@@ -1,13 +1,37 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import aptivaImage from "../assets/aptiva.png";
+import aptivaMark from "../assets/aptiva-mark.png";
 import demoImage from "../assets/demo.png";
 
 export default function LandingPage() {
+  const navigate = useNavigate();
+
+  const handleStartPractice = async () => {
+    try {
+      const response = await fetch("/api/me");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Authentication required");
+      }
+
+      localStorage.setItem("interviewUser", JSON.stringify(data.user));
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("isAuthenticated");
+      navigate("/practice");
+    } catch (err) {
+      console.error("Landing Session Check Error:", err);
+      navigate("/signin");
+    }
+  };
+
   return (
     <main className="marketing-page">
       <nav className="public-nav">
         <Link className="brand" to="/">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark">
+            <img src={aptivaMark} alt="" />
+          </span>
           <span>
             <strong>Aptiva</strong>
             <small>Interview practice</small>
@@ -36,9 +60,13 @@ export default function LandingPage() {
             <Link className="primary-button" to="/signup">
               Create account
             </Link>
-            <Link className="secondary-button" to="/signup">
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={handleStartPractice}
+            >
               Start practice
-            </Link>
+            </button>
           </div>
         </div>
         <div className="hero-demo">

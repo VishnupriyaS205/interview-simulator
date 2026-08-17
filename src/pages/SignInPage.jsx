@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import aptivaMark from "../assets/aptiva-mark.png";
 import PasswordField from "../components/PasswordField";
 
 export default function SignInPage() {
@@ -58,8 +59,8 @@ export default function SignInPage() {
       }
 
       localStorage.setItem("interviewUser", JSON.stringify(data.user));
-      localStorage.setItem("authToken", data.token);
-      localStorage.setItem("isAuthenticated", "true");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("isAuthenticated");
       setFieldErrors({});
       setFormError("");
       navigate("/dashboard");
@@ -73,7 +74,9 @@ export default function SignInPage() {
     <main className="auth-page">
       <section className="auth-panel">
         <Link className="brand auth-brand" to="/">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark">
+            <img src={aptivaMark} alt="" />
+          </span>
           <strong>Aptiva</strong>
         </Link>
         <p className="eyebrow">Welcome back</p>

@@ -1,20 +1,76 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import aptivaMark from "../assets/aptiva-mark.png";
+
+function DashboardIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 13h6v7H4z" />
+      <path d="M14 4h6v16h-6z" />
+      <path d="M4 4h6v5H4z" />
+    </svg>
+  );
+}
+
+function PracticeIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z" />
+      <path d="M4 5h2v14H4z" />
+    </svg>
+  );
+}
+
+function ProgressIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 17l5-5 4 4 7-8" />
+      <path d="M15 8h5v5" />
+    </svg>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M12 7v5l3 2" />
+      <path d="M5 6a9 9 0 1 1-1 11" />
+      <path d="M4 4v5h5" />
+    </svg>
+  );
+}
+
+function SettingsIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5a7 7 0 0 0 .1-1z" />
+    </svg>
+  );
+}
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: "D" },
-  { to: "/practice", label: "Practice", icon: "P" },
-  { to: "/progress", label: "Progress", icon: "G" },
-  { to: "/history", label: "History", icon: "H" },
-  { to: "/settings", label: "Settings", icon: "S" },
+  { to: "/dashboard", label: "Dashboard", icon: <DashboardIcon /> },
+  { to: "/practice", label: "Practice", icon: <PracticeIcon /> },
+  { to: "/progress", label: "Progress", icon: <ProgressIcon /> },
+  { to: "/history", label: "History", icon: <HistoryIcon /> },
+  { to: "/settings", label: "Settings", icon: <SettingsIcon /> },
 ];
 
 export default function AppLayout({ children }) {
   const navigate = useNavigate();
 
-  const handleSignOut = () => {
-    localStorage.setItem("isAuthenticated", "false");
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/signout", {
+        method: "POST",
+      });
+    } catch (err) {
+      console.error("Signout Error:", err);
+    }
+
     localStorage.removeItem("interviewUser");
     localStorage.removeItem("authToken");
+    localStorage.removeItem("isAuthenticated");
     localStorage.removeItem("aptivaPracticeProgress");
     navigate("/signin");
   };
@@ -23,7 +79,9 @@ export default function AppLayout({ children }) {
     <div className="app-shell">
       <aside className="sidebar">
         <Link className="brand" to="/dashboard">
-          <span className="brand-mark">A</span>
+          <span className="brand-mark">
+            <img src={aptivaMark} alt="" />
+          </span>
           <span>
             <strong>Aptiva</strong>
           </span>

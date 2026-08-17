@@ -132,7 +132,6 @@ export default function PracticePage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
         body: JSON.stringify({
           roleName: setup.roleName,
@@ -173,7 +172,6 @@ export default function PracticePage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
         },
         body: JSON.stringify({
           roleName: setup.roleName,

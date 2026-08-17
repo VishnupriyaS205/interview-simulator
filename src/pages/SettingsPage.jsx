@@ -39,11 +39,7 @@ export default function SettingsPage() {
       }
 
       try {
-        const response = await fetch(`/api/users/${user.id}/profile`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-        });
+        const response = await fetch(`/api/users/${user.id}/profile`);
         const data = await response.json();
 
         if (!response.ok) {
@@ -93,7 +89,6 @@ export default function SettingsPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
       },
       body: JSON.stringify({
         fullName: nextForm.fullName.trim(),
@@ -108,7 +103,9 @@ export default function SettingsPage() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Profile update failed");
+      const profileError = new Error(data.error || "Profile update failed");
+      profileError.field = data.field;
+      throw profileError;
     }
 
     localStorage.setItem("interviewUser", JSON.stringify(data.user));
@@ -176,12 +173,22 @@ export default function SettingsPage() {
       return "Choose a valid level.";
     }
 
+    if (showPasswordReset && !form.password) {
+      setPasswordError("New password is required.");
+      return "password-field";
+    }
+
     if (form.password && form.password.length < 6) {
       setPasswordError("Password must be at least 6 characters.");
       return "password-field";
     }
 
-    if (form.password !== form.confirmPassword) {
+    if (showPasswordReset && !form.confirmPassword) {
+      setConfirmPasswordError("Confirm password is required.");
+      return "password-field";
+    }
+
+    if (showPasswordReset && form.password !== form.confirmPassword) {
       setConfirmPasswordError("Passwords do not match.");
       return "password-field";
     }
@@ -217,7 +224,13 @@ export default function SettingsPage() {
       );
     } catch (err) {
       console.error("Profile Update Error:", err);
-      setError("Could not update profile. Check if the backend is running.");
+      if (err.field === "password") {
+        setPasswordError(err.message);
+      } else {
+        setError(
+          err.message || "Could not update profile. Check if the backend is running.",
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -331,6 +344,13 @@ export default function SettingsPage() {
                   setShowPasswordReset(true);
                   setError("");
                   setStatus("");
+                  setForm((current) => ({
+                    ...current,
+                    password: "",
+                    confirmPassword: "",
+                  }));
+                  setPasswordError("");
+                  setConfirmPasswordError("");
                 }}
               >
                 Reset Password
@@ -340,6 +360,7 @@ export default function SettingsPage() {
             {showPasswordReset && (
               <div className="password-reset-fields">
                 <PasswordField
+                  autoComplete="new-password"
                   className="blue-field"
                   label="New Password"
                   placeholder="Enter new password"
@@ -350,6 +371,7 @@ export default function SettingsPage() {
 
                 {showPasswordReset && (
                   <PasswordField
+                    autoComplete="new-password"
                     className="blue-field"
                     label="Confirm New Password"
                     placeholder="Repeat new password"
@@ -383,6 +405,8 @@ export default function SettingsPage() {
                       password: "",
                       confirmPassword: "",
                     }));
+                    setPasswordError("");
+                    setConfirmPasswordError("");
                   }}
                 >
                   Cancel

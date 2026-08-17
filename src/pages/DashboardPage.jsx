@@ -27,11 +27,7 @@ export default function DashboardPage() {
       }
 
       try {
-        const response = await fetch(`/api/users/${user.id}/dashboard`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-        });
+        const response = await fetch(`/api/users/${user.id}/dashboard`);
 
         if (!response.ok) {
           throw new Error("Dashboard API failed");

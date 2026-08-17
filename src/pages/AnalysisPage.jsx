@@ -21,11 +21,6 @@ export default function AnalysisPage() {
       try {
         const response = await fetch(
           `/api/users/${user.id}/sessions/${sessionId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-          },
         );
         const data = await response.json();
 

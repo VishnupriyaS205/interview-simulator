@@ -38,12 +38,7 @@ export default function HistoryPage() {
       }
 
       try {
-        const headers = {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        };
-        const sessionsResponse = await fetch(`/api/users/${user.id}/sessions`, {
-          headers,
-        });
+        const sessionsResponse = await fetch(`/api/users/${user.id}/sessions`);
 
         if (!sessionsResponse.ok) {
           throw new Error("History API failed");
@@ -69,9 +64,6 @@ export default function HistoryPage() {
     try {
       const response = await fetch(`/api/users/${user.id}/sessions/${sessionId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
       });
 
       if (!response.ok) {
