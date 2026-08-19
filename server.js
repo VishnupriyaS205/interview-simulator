@@ -4,10 +4,14 @@ import pg from "pg";
 import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
+import path from "path";
+import { fileURLToPath } from "url";
 import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
@@ -609,6 +613,11 @@ app.post("/api/signout", async (req, res) => {
 // GET /api/me
 app.get("/api/me", requireAuth, (req, res) => {
   res.json({ user: req.user });
+});
+
+// GET /api/health
+app.get("/api/health", (req, res) => {
+  res.json({ status: "ok" });
 });
 
 // GET /api/fields
@@ -1773,10 +1782,19 @@ app.patch(
   },
 );
 
-const PORT = 5000;
+if (process.env.NODE_ENV === "production") {
+  const clientDistPath = path.join(__dirname, "dist");
+
+  app.use(express.static(clientDistPath));
+  app.get(/^(?!\/api).*/, (req, res) => {
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+}
+
+const PORT = process.env.PORT || 5000;
 ensureInterviewData()
   .then(() => {
-    app.listen(PORT, () =>
+    app.listen(PORT, "0.0.0.0", () =>
       console.log(`Backend server listening on http://localhost:${PORT}`),
     );
   })

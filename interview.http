@@ -1,6 +1,6 @@
 @baseUrl = http://localhost:5000
-@userId = 14
-@sessionId = 5
+@userId = 1
+@sessionId = 21
 
 ### Signup
 POST {{baseUrl}}/api/signup
@@ -8,8 +8,8 @@ Content-Type: application/json
 
 {
   
-  "fullName": "siva",
-  "email": "siva@gmail.com",
+  "fullName": "vishnu",
+  "email": "vishnu@gmail.com",
   "password": "123@123"
 }
 
@@ -21,7 +21,7 @@ POST {{baseUrl}}/api/signin
 Content-Type: application/json
 
 {
-  "email": "siva@gmail.com",
+  "email": "vishnu@gmail.com",
   "password": "123@123"
 }
 
@@ -85,8 +85,8 @@ PATCH {{baseUrl}}/api/users/{{userId}}/profile
 Content-Type: application/json
 
 {
-  "fullName": "siva",
-  "email": "siva@gmail.com",
+  "fullName": "vishnupriya",
+  "email": "vishnu@gmail.com",
   "careerGoal": "Frontend Developer",
   "level": "Beginner",
   "profilePicture": ""
