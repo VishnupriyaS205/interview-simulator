@@ -1057,6 +1057,22 @@ textarea:focus {
   border-radius: var(--radius);
 }
 
+.selected-round-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.selected-round-mark input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
 .progress-session-list {
   display: grid;
   gap: 14px;
@@ -1252,11 +1268,26 @@ textarea:focus {
   .sidebar {
     position: static;
     height: auto;
-    padding: 16px;
+    gap: 14px;
+    padding: 14px 20px;
   }
 
   .side-nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .side-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .side-nav a {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 8px 12px;
   }
 
   .sidebar-card {
@@ -1310,25 +1341,122 @@ textarea:focus {
 }
 
 @media (max-width: 640px) {
+  h1 {
+    font-size: 1.8rem;
+    line-height: 1.12;
+  }
+
+  h2 {
+    font-size: 1rem;
+  }
+
+  .sidebar {
+    padding: 12px 14px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 34px;
+    height: 34px;
+  }
+
   .content {
-    padding: 20px 14px;
+    padding: 18px 12px 28px;
   }
 
   .side-nav {
-    grid-template-columns: 1fr 1fr;
+    margin-inline: -2px;
   }
 
-  .topbar-actions,
+  .side-nav a {
+    gap: 8px;
+    min-height: 40px;
+    padding: 7px 9px;
+    font-size: 0.86rem;
+  }
+
+  .nav-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .topbar {
+    position: static;
+    min-height: auto;
+    padding: 12px;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .topbar-actions .ghost-button {
+    grid-column: 1 / -1;
+  }
+
+  .page-header {
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .page-header p {
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+
   .page-actions,
   .button-row,
   .public-nav {
     width: 100%;
   }
 
+  .button-row .primary-button,
+  .button-row .secondary-button,
+  .page-actions .primary-button,
+  .page-actions .secondary-button,
+  .form-panel .primary-button,
+  .form-panel .secondary-button,
+  .saved-setup-panel .primary-button,
+  .saved-setup-panel .secondary-button,
+  .question-card .primary-button,
+  .question-card .secondary-button,
+  .review-panel .primary-button,
+  .review-panel .secondary-button {
+    width: 100%;
+  }
+
   .primary-button,
   .secondary-button,
   .ghost-button {
-    width: 100%;
+    min-height: 42px;
+    padding-inline: 14px;
+  }
+
+  .small {
+    min-height: 38px;
+  }
+
+  .card,
+  .stat-card {
+    box-shadow: 0 10px 26px rgba(23, 32, 51, 0.06);
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .card-header,
+  .round-meta,
+  .detail-row,
+  .toggle-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .stats-grid,
@@ -1342,15 +1470,74 @@ textarea:focus {
 
   .history-item {
     grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
   }
 
   .progress-session-item {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .profile-summary {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .question-card h2 {
+    font-size: 1.18rem;
+    line-height: 1.35;
+  }
+
+  .question-block {
+    min-height: auto;
+    padding: 14px;
+  }
+
+  .question-list {
+    margin: 14px 0;
+  }
+
+  .radio-option {
+    min-height: 42px;
+    padding: 10px;
+  }
+
+  textarea {
+    min-height: 150px;
+    margin: 12px 0;
+  }
+
+  .timer-box {
+    min-height: 88px;
+    margin-top: 14px;
+    font-size: 1.9rem;
+  }
+
+  .performance-score strong,
+  .result-card strong {
+    font-size: 1.45rem;
+  }
+
+  .review-panel h2,
+  .report-panel h2 {
+    font-size: 1.25rem;
+  }
+
+  .report-detail-panel,
+  .video-interview-panel,
+  .live-analytics-panel,
+  .analysis-instructions-panel {
+    padding: 14px;
+  }
+
+  .analytics-list {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .selected-round-mark {
+    justify-self: start;
   }
 
   .hero-section {
@@ -1359,5 +1546,32 @@ textarea:focus {
 
   .auth-panel {
     padding: 24px;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .side-nav a span:last-child {
+    display: none;
+  }
+
+  .side-nav a {
+    padding-inline: 8px;
+  }
+
+  .nav-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .stats-grid {
+    gap: 10px;
+  }
+
+  .stat-card strong {
+    font-size: 1.5rem;
   }
 }

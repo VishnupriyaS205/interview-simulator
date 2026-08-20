@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import PageHeader from "../components/PageHeader";
 import StatCard from "../components/StatCard";
 
+const PRACTICE_PROGRESS_KEY = "aptivaPracticeProgress";
+
 export default function ProgressPage() {
+  const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("interviewUser"));
   const [progress, setProgress] = useState(null);
   const [error, setError] = useState("");
@@ -43,6 +46,14 @@ export default function ProgressPage() {
   const roundStats = progress?.roundStats || [];
   const suggestions = progress?.suggestions || [];
   const nextPractice = progress?.nextPractice;
+  const aptitudeScore =
+    roundStats.find((round) => round.roundKey === "aptitude")?.accuracy ?? 0;
+  const englishScore =
+    roundStats.find((round) => round.roundKey === "english")?.accuracy ?? 0;
+  const technicalScore =
+    roundStats.find((round) => round.roundKey === "technical")?.accuracy ?? 0;
+  const aiInterviewScore =
+    roundStats.find((round) => round.roundKey === "video")?.accuracy ?? 0;
   const trendText =
     summary?.trend > 0
       ? `+${summary.trend}% from previous`
@@ -87,6 +98,10 @@ export default function ProgressPage() {
             />
             <StatCard label="Average score" value={`${summary.averageScore}%`} note="all-session average" />
             <StatCard label="Best score" value={`${summary.bestScore}%`} note="best saved result" />
+            <StatCard label="Aptitude score" value={`${aptitudeScore}%`} note="round accuracy" />
+            <StatCard label="English score" value={`${englishScore}%`} note="communication MCQ" />
+            <StatCard label="Technical score" value={`${technicalScore}%`} note="round accuracy" />
+            <StatCard label="AI interview" value={`${aiInterviewScore}%`} note="spoken answer score" />
           </section>
 
           {nextPractice && (
@@ -98,9 +113,24 @@ export default function ProgressPage() {
               <p className="muted">
                 Focus: {nextPractice.focus}. {nextPractice.reason}
               </p>
-              <Link className="primary-button small" to="/practice">
-                Start suggested practice
-              </Link>
+              <button
+                className="primary-button small"
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem(PRACTICE_PROGRESS_KEY);
+                  navigate("/practice/session", {
+                    state: {
+                      roleName: nextPractice.roleName,
+                      skill: nextPractice.skillName,
+                      difficulty: nextPractice.difficulty,
+                      focusRound: nextPractice.focusRound,
+                      fresh: true,
+                    },
+                  });
+                }}
+              >
+                Start selected practice
+              </button>
             </section>
           )}
 
@@ -156,10 +186,53 @@ export default function ProgressPage() {
                   <div>
                     <h2>{round.label}</h2>
                     <p className="muted">
-                      {round.correct} correct out of {round.attempted}
+                      {round.scoreLabel ||
+                        `${round.correct} correct out of ${round.attempted}`}
                     </p>
                   </div>
+                  <label className="selected-round-mark">
+                    <input
+                      type="checkbox"
+                      checked={round.roundKey === nextPractice?.focusRound}
+                      readOnly
+                    />
+                    <span>
+                      {round.roundKey === nextPractice?.focusRound
+                        ? "Weak area"
+                        : "Optional"}
+                    </span>
+                  </label>
                   <strong>{round.accuracy}%</strong>
+                  <button
+                    className="secondary-button small"
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem(PRACTICE_PROGRESS_KEY);
+                      navigate("/practice/session", {
+                        state: {
+                          roleName:
+                            nextPractice?.roleName ||
+                            sessions[0]?.roleName ||
+                            user?.preferredRole ||
+                            "Frontend Developer",
+                          skill:
+                            nextPractice?.skillName ||
+                            sessions[0]?.skillName ||
+                            user?.preferredSkill ||
+                            "React",
+                          difficulty:
+                            nextPractice?.difficulty ||
+                            sessions[0]?.difficulty ||
+                            user?.preferredDifficulty ||
+                            "Easy",
+                          focusRound: round.roundKey,
+                          fresh: true,
+                        },
+                      });
+                    }}
+                  >
+                    Start selected practice
+                  </button>
                 </article>
               ))
             )}

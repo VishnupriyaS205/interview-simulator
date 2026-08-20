@@ -14,410 +14,6 @@ function getSavedPracticeProgress() {
   }
 }
 
-async function fetchInterviewQuestionsOnce(params) {
-  const key = params.toString();
-
-  if (pendingQuestionRequests.has(key)) {
-    return pendingQuestionRequests.get(key);
-  }
-
-  const request = fetch(`/api/interview/questions?${params}`).then(
-    async (response) => {
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Interview questions API failed");
-      }
-
-      return data;
-    },
-  );
-
-  pendingQuestionRequests.set(key, request);
-
-  try {
-    return await request;
-  } finally {
-    pendingQuestionRequests.delete(key);
-  }
-}
-
-const aptitudeQuestions = [
-  {
-    question:
-      "If 8 people complete 24 tasks in one day, how many tasks can 4 people complete at the same rate?",
-    options: ["8", "12", "16", "20"],
-    answer: "12",
-    explanation:
-      "4 people are half of 8 people, so they complete half of 24 tasks. Half of 24 is 12.",
-  },
-  {
-    question: "Find the next number: 3, 6, 12, 24, ?",
-    options: ["30", "36", "42", "48"],
-    answer: "48",
-    explanation: "Each number is doubled. 24 doubled is 48.",
-  },
-  {
-    question:
-      "A train travels 60 km in 1 hour. How far will it travel in 4 hours at the same speed?",
-    options: ["120 km", "180 km", "240 km", "300 km"],
-    answer: "240 km",
-    explanation: "Distance equals speed multiplied by time. 60 x 4 = 240 km.",
-  },
-  {
-    question: "Which word does not belong: Apple, Mango, Carrot, Banana?",
-    options: ["Apple", "Mango", "Carrot", "Banana"],
-    answer: "Carrot",
-    explanation: "Apple, mango, and banana are fruits. Carrot is a vegetable.",
-  },
-  {
-    question: "If A is taller than B, and B is taller than C, who is tallest?",
-    options: ["A", "B", "C", "Cannot say"],
-    answer: "A",
-    explanation: "A is above B, and B is above C, so A is tallest.",
-  },
-  {
-    question: "What is 25% of 200?",
-    options: ["25", "40", "50", "75"],
-    answer: "50",
-    explanation: "25% means one-fourth. One-fourth of 200 is 50.",
-  },
-  {
-    question: "Find the odd one out: Square, Circle, Triangle, Cube.",
-    options: ["Square", "Circle", "Triangle", "Cube"],
-    answer: "Cube",
-    explanation: "Cube is a 3D shape. The others are 2D shapes.",
-  },
-  {
-    question: "If today is Monday, what day will it be after 10 days?",
-    options: ["Wednesday", "Thursday", "Friday", "Saturday"],
-    answer: "Thursday",
-    explanation:
-      "10 days after Monday is Thursday because 7 days returns to Monday, then 3 more days is Thursday.",
-  },
-  {
-    question:
-      "A shop gives a 10% discount on Rs. 500. What is the discount amount?",
-    options: ["Rs. 25", "Rs. 40", "Rs. 50", "Rs. 100"],
-    answer: "Rs. 50",
-    explanation: "10% of 500 is 50.",
-  },
-  {
-    question: "Complete the analogy: Book is to reading as fork is to ____.",
-    options: ["Writing", "Eating", "Drawing", "Running"],
-    answer: "Eating",
-    explanation: "A book is used for reading. A fork is used for eating.",
-  },
-  {
-    question: "Which number is the largest?",
-    options: ["0.7", "0.07", "0.77", "0.707"],
-    answer: "0.77",
-    explanation: "0.77 is greater than 0.707, 0.7, and 0.07.",
-  },
-  {
-    question:
-      "If 5 boxes hold 60 books, how many books can 1 box hold equally?",
-    options: ["10", "12", "15", "20"],
-    answer: "12",
-    explanation: "60 divided by 5 is 12.",
-  },
-  {
-    question: "Find the missing number: 2, 5, 8, 11, ?",
-    options: ["12", "13", "14", "15"],
-    answer: "14",
-    explanation: "The pattern adds 3 each time. 11 + 3 = 14.",
-  },
-  {
-    question:
-      "If all roses are flowers and some flowers are red, which statement is definitely true?",
-    options: [
-      "All roses are red",
-      "Some roses are red",
-      "Roses are flowers",
-      "No flowers are roses",
-    ],
-    answer: "Roses are flowers",
-    explanation: "The first statement directly says all roses are flowers.",
-  },
-  {
-    question:
-      "A clock shows 3:00. What is the angle between the hour and minute hands?",
-    options: ["45 degrees", "60 degrees", "90 degrees", "120 degrees"],
-    answer: "90 degrees",
-    explanation:
-      "At 3:00, the minute hand is at 12 and the hour hand is at 3, making a right angle.",
-  },
-];
-
-const englishQuestions = [
-  {
-    question: "Choose the correct sentence.",
-    options: [
-      "She go to office.",
-      "She goes to office.",
-      "She going office.",
-      "She gone office.",
-    ],
-    answer: "She goes to office.",
-    explanation:
-      "For he, she, or it in simple present tense, we usually add s or es to the verb.",
-  },
-  {
-    question: "Choose the best meaning of 'confident'.",
-    options: ["Unsure", "Certain", "Silent", "Angry"],
-    answer: "Certain",
-    explanation: "Confident means feeling sure or certain about something.",
-  },
-  {
-    question: "Fill in the blank: I am interested ____ web development.",
-    options: ["on", "in", "at", "for"],
-    answer: "in",
-    explanation: "The correct phrase is 'interested in'.",
-  },
-  {
-    question: "Which is the most professional greeting?",
-    options: ["Hey boss", "Good morning", "What up", "Listen"],
-    answer: "Good morning",
-    explanation: "'Good morning' is polite and professional.",
-  },
-  {
-    question: "Choose the correct spelling.",
-    options: ["Comunication", "Communication", "Comminication", "Comnication"],
-    answer: "Communication",
-    explanation: "Communication is the correct spelling.",
-  },
-  {
-    question: "What is the opposite of 'increase'?",
-    options: ["Improve", "Decrease", "Create", "Include"],
-    answer: "Decrease",
-    explanation:
-      "Decrease means to become less, which is the opposite of increase.",
-  },
-  {
-    question: "Choose the best interview answer opening.",
-    options: [
-      "I do not know anything.",
-      "My strength is clear problem solving.",
-      "No idea.",
-      "Ask someone else.",
-    ],
-    answer: "My strength is clear problem solving.",
-    explanation: "This answer is positive, specific, and professional.",
-  },
-  {
-    question: "Fill in the blank: We completed the task ____ time.",
-    options: ["on", "in", "by", "at"],
-    answer: "on",
-    explanation: "'On time' means at the planned time.",
-  },
-  {
-    question: "Choose the correct past tense: I ____ the bug yesterday.",
-    options: ["fix", "fixed", "fixes", "fixing"],
-    answer: "fixed",
-    explanation: "Yesterday needs past tense, so 'fixed' is correct.",
-  },
-  {
-    question: "Which phrase is best for asking clarification?",
-    options: [
-      "Repeat fast.",
-      "I cannot understand you.",
-      "Could you please explain that again?",
-      "Say it properly.",
-    ],
-    answer: "Could you please explain that again?",
-    explanation: "This is polite and clear.",
-  },
-  {
-    question: "Choose the correct article: I built ____ app.",
-    options: ["a", "an", "the", "no article"],
-    answer: "an",
-    explanation:
-      "Use 'an' before a vowel sound. App starts with a vowel sound.",
-  },
-  {
-    question: "What does 'deadline' mean?",
-    options: [
-      "Start date",
-      "Final date to finish",
-      "Meeting place",
-      "Break time",
-    ],
-    answer: "Final date to finish",
-    explanation:
-      "A deadline is the final time or date by which work should be completed.",
-  },
-  {
-    question: "Choose the sentence with clear communication.",
-    options: [
-      "Done thing.",
-      "I finished the login form and tested it.",
-      "Maybe okay.",
-      "Code all set something.",
-    ],
-    answer: "I finished the login form and tested it.",
-    explanation: "It clearly says what was finished and what was checked.",
-  },
-  {
-    question: "Fill in the blank: Thank you ____ your feedback.",
-    options: ["for", "from", "to", "with"],
-    answer: "for",
-    explanation: "The correct phrase is 'thank you for'.",
-  },
-  {
-    question: "Which is the best closing line in an interview?",
-    options: [
-      "I am done, bye.",
-      "Thank you for your time.",
-      "No more questions.",
-      "Okay leave.",
-    ],
-    answer: "Thank you for your time.",
-    explanation: "This is polite and professional.",
-  },
-];
-
-const technicalTemplates = [
-  [
-    "Which task is commonly handled with {skill} in a {role} role?",
-    "Building and improving application features",
-  ],
-  [
-    "What should be checked first when a {skill} feature gives the wrong result?",
-    "The input values and current state",
-  ],
-  [
-    "Which debugging step is most useful for a {skill} issue?",
-    "Test one small part at a time",
-  ],
-  [
-    "What makes a {difficulty} level {skill} answer stronger?",
-    "Clear reasoning with a practical example",
-  ],
-  [
-    "Before coding a {skill} solution, what should be clarified?",
-    "The expected result and constraints",
-  ],
-  [
-    "Which practice improves maintainability in {skill} work?",
-    "Clear names and small focused functions",
-  ],
-  [
-    "If a {skill} feature works in one case but fails in another, what should be added?",
-    "Additional test cases",
-  ],
-  [
-    "How should a {role} candidate explain a {skill} project?",
-    "Goal, approach, tools used, and result",
-  ],
-  [
-    "What is the best response to technical feedback on {skill} work?",
-    "Ask clarifying questions and improve the solution",
-  ],
-  [
-    "Which answer style should be avoided in a technical interview?",
-    "Guessing without explaining the approach",
-  ],
-  [
-    "How can a candidate handle being stuck on a {skill} question?",
-    "Break the problem into smaller steps",
-  ],
-  [
-    "What matters most when choosing a technical solution as a {role}?",
-    "The user need and project requirement",
-  ],
-  [
-    "Why is readable code important in {skill} work?",
-    "It helps others understand and update the code",
-  ],
-  [
-    "What should a complete technical answer include?",
-    "Reasoning, result, and possible improvement",
-  ],
-  [
-    "How should an unknown {skill} question be handled?",
-    "State known points and ask a clarifying question",
-  ],
-];
-
-function shuffleOptions(options, correctAnswer) {
-  const shuffled = [...options];
-
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [shuffled[index], shuffled[randomIndex]] = [
-      shuffled[randomIndex],
-      shuffled[index],
-    ];
-  }
-
-  if (shuffled[0] === correctAnswer && shuffled.length > 1) {
-    [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
-  }
-
-  return shuffled;
-}
-
-function buildVideoQuestions(roleName, skill, difficulty) {
-  return [
-    {
-      question: "Tell me about yourself.",
-      technicalTerms: [
-        skill.toLowerCase(),
-        roleName.toLowerCase().split(" ")[0],
-        "project",
-      ],
-    },
-    {
-      question: `Why are you interested in the ${roleName} role?`,
-      technicalTerms: [roleName.toLowerCase().split(" ")[0], "role", "learn"],
-    },
-    {
-      question: `Explain one ${skill} project or feature you built. Mention the problem, approach, and result.`,
-      technicalTerms: [skill.toLowerCase(), "problem", "result"],
-    },
-    {
-      question: `Describe how you would debug a ${difficulty.toLowerCase()} ${skill} issue during work.`,
-      technicalTerms: [skill.toLowerCase(), "debug", "check"],
-    },
-    {
-      question: `What makes you suitable for a ${roleName} role? Give one technical strength and one communication strength.`,
-      technicalTerms: [
-        roleName.toLowerCase().split(" ")[0],
-        "technical",
-        "communication",
-      ],
-    },
-  ];
-}
-
-function buildTechnicalQuestions(roleName, skill, difficulty) {
-  return technicalTemplates.map(([question, answer]) => {
-    const finalQuestion = question
-      .replace("{role}", roleName)
-      .replace("{skill}", skill)
-      .replace("{difficulty}", difficulty);
-    const finalAnswer = answer
-      .replace("{role}", roleName)
-      .replace("{skill}", skill)
-      .replace("{difficulty}", difficulty);
-
-    return {
-      question: finalQuestion,
-      options: shuffleOptions(
-        [
-          finalAnswer,
-          "Ignore the problem and move ahead",
-          "Use random changes until it works",
-          "Only memorize the definition",
-        ],
-        finalAnswer,
-      ),
-      answer: finalAnswer,
-      explanation: `${finalAnswer} is correct because it shows practical technical judgment for the selected role and skill.`,
-    };
-  });
-}
-
 function formatTime(seconds) {
   const minutes = Math.floor(seconds / 60)
     .toString()
@@ -540,41 +136,43 @@ function getNextStepSuggestion(results, percentage, skill, difficulty) {
     : `Practice fundamentals first, then try the same setup again.`;
 }
 
-// Local fallback questions are intentionally disabled so fresh practice uses Gemini only.
-// eslint-disable-next-line no-unused-vars
-function buildPracticeRounds(roleName, skill, difficulty) {
-  return [
-    {
-      id: "aptitude",
-      title: "Aptitude + Logical Reasoning",
-      questions: aptitudeQuestions,
+async function fetchInterviewQuestionsOnce(params) {
+  const key = params.toString();
+
+  if (pendingQuestionRequests.has(key)) {
+    return pendingQuestionRequests.get(key);
+  }
+
+  const request = fetch(`/api/interview/questions?${params}`).then(
+    async (response) => {
+      const text = await response.text();
+      let data;
+
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          "Backend did not return JSON. Check that the Express server is running.",
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.details || data.error || "Interview questions API failed",
+        );
+      }
+
+      return data;
     },
-    {
-      id: "english",
-      title: "English Communication",
-      questions: englishQuestions,
-    },
-    {
-      id: "technical",
-      title: "Technical Round",
-      questions: buildTechnicalQuestions(roleName, skill, difficulty),
-    },
-    {
-      id: "video",
-      title: "AI Interview Analysis",
-      type: "video",
-      questions: buildVideoQuestions(roleName, skill, difficulty).map(
-        (item) => ({
-          ...item,
-          type: "video",
-          options: [],
-          answer: "Structured interview answer",
-          explanation:
-            "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
-        }),
-      ),
-    },
-  ];
+  );
+
+  pendingQuestionRequests.set(key, request);
+
+  try {
+    return await request;
+  } finally {
+    pendingQuestionRequests.delete(key);
+  }
 }
 
 function normalizeSavedRounds(rounds) {
@@ -588,17 +186,36 @@ function normalizeSavedRounds(rounds) {
   );
 }
 
+function hasValidSavedRounds(savedProgress) {
+  const rounds = savedProgress?.rounds;
+  const focusedRound = savedProgress?.setup?.focusRound;
+
+  return (
+    Array.isArray(rounds) &&
+    rounds.length === (focusedRound ? 1 : 4) &&
+    rounds.every((round) =>
+      round?.id === "video"
+        ? round.questions?.length === 5
+        : round?.questions?.length === 15,
+    )
+  );
+}
+
 export default function PracticeSessionPage() {
   const { state } = useLocation();
   const user = JSON.parse(localStorage.getItem("interviewUser"));
   const rawSavedProgress = state?.fresh ? null : getSavedPracticeProgress();
   const savedProgress =
-    rawSavedProgress?.userId === user?.id ? rawSavedProgress : null;
+    rawSavedProgress?.userId === user?.id &&
+    hasValidSavedRounds(rawSavedProgress)
+      ? rawSavedProgress
+      : null;
   const roleName =
     savedProgress?.setup?.roleName || state?.roleName || "Frontend Developer";
   const skill = savedProgress?.setup?.skill || state?.skill || "React";
   const difficulty =
     savedProgress?.setup?.difficulty || state?.difficulty || "Easy";
+  const focusRound = savedProgress?.setup?.focusRound || state?.focusRound || "";
 
   const [rounds, setRounds] = useState(() =>
     savedProgress?.rounds
@@ -631,33 +248,47 @@ export default function PracticeSessionPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [isAnalyzingVideo, setIsAnalyzingVideo] = useState(false);
   const [isLoadingQuestions, setIsLoadingQuestions] = useState(!savedProgress);
-  const [activeReportSection, setActiveReportSection] = useState("aptitude");
+  const [questionRetryCount, setQuestionRetryCount] = useState(0);
+  const [activeReportSection, setActiveReportSection] = useState(
+    focusRound === "video" ? "ai-video" : focusRound || "aptitude",
+  );
   const videoRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
 
   useEffect(() => {
-    const fetchInterviewQuestions = async () => {
-      if (savedProgress) {
-        setIsLoadingQuestions(false);
-        return;
-      }
+    if (savedProgress) {
+      return;
+    }
 
+    let isCancelled = false;
+
+    const fetchInterviewQuestions = async () => {
       const params = new URLSearchParams({
         roleName,
         skill,
         difficulty,
         requestId: Date.now().toString(),
       });
+      const expectedRoundIds = focusRound
+        ? [focusRound]
+        : ["aptitude", "english", "technical", "video"];
+
+      if (focusRound) {
+        params.set("focusRound", focusRound);
+      }
 
       try {
+        setRoundError("");
+        setIsLoadingQuestions(true);
+
         const data = await fetchInterviewQuestionsOnce(params);
         const aiRounds = data.rounds || [];
-        const orderedRounds = ["aptitude", "english", "technical", "video"]
+        const orderedRounds = expectedRoundIds
           .map((roundId) => aiRounds.find((round) => round.id === roundId))
           .filter(Boolean);
         const hasAiRounds =
-          orderedRounds.length === 4 &&
+          orderedRounds.length === expectedRoundIds.length &&
           orderedRounds.every((round) =>
             round.id === "video"
               ? round.questions.length === 5
@@ -665,49 +296,63 @@ export default function PracticeSessionPage() {
           );
 
         if (!hasAiRounds) {
-          throw new Error("Gemini did not return all four fresh rounds.");
+          throw new Error("Gemini did not return the selected fresh round.");
         }
 
-        setRounds([
-          orderedRounds[0],
-          orderedRounds[1],
-          orderedRounds[2],
-          {
-            ...orderedRounds[3],
-            type: "video",
-            questions: orderedRounds[3].questions.map((question) => ({
-              ...question,
-              type: "video",
-              options: [],
-              answer: "Structured interview answer",
-              explanation:
-                question.explanation ||
-                "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
-            })),
-          },
-        ]);
+        if (isCancelled) {
+          return;
+        }
+
+        setRounds(
+          orderedRounds.map((round) =>
+            round.id === "video"
+              ? {
+                  ...round,
+                  type: "video",
+                  questions: round.questions.map((question) => ({
+                    ...question,
+                    type: "video",
+                    options: [],
+                    answer: "Structured interview answer",
+                    explanation:
+                      question.explanation ||
+                      "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
+                  })),
+                }
+              : round,
+          ),
+        );
       } catch (err) {
         console.error("Interview Questions Fetch Error:", err);
-        setRounds([]);
-        setRoundError(
-          "Could not load fresh Gemini questions. Try Start Fresh Practice again.",
-        );
+
+        if (!isCancelled) {
+          setRounds([]);
+          setRoundError(
+            `Gemini question generation failed. ${err.message || "Please check your API key, model, or quota."}`,
+          );
+        }
       } finally {
-        setRoundIndex(0);
-        setCurrentQuestionIndex(0);
-        setAnswers({});
-        setResults([]);
-        setSavedSessionId(null);
-        setSaveError("");
-        setSaveAttempted(false);
-        setTimeLeft(ROUND_TIME);
-        setView("questions");
-        setIsLoadingQuestions(false);
+        if (!isCancelled) {
+          setRoundIndex(0);
+          setCurrentQuestionIndex(0);
+          setAnswers({});
+          setResults([]);
+          setSavedSessionId(null);
+          setSaveError("");
+          setSaveAttempted(false);
+          setTimeLeft(ROUND_TIME);
+          setView("questions");
+          setIsLoadingQuestions(false);
+        }
       }
     };
 
     fetchInterviewQuestions();
-  }, [difficulty, roleName, savedProgress, skill]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [difficulty, focusRound, questionRetryCount, roleName, savedProgress, skill]);
 
   const emptyRound = useMemo(() => ({ id: "", title: "", questions: [] }), []);
   const activeRound = rounds[roundIndex] || emptyRound;
@@ -1087,7 +732,13 @@ export default function PracticeSessionPage() {
     { id: "english", label: "English" },
     { id: "technical", label: "Technical" },
     { id: "ai-video", label: "AI Interview Analysis" },
-  ];
+  ].filter((section) =>
+    rounds.some((round) =>
+      section.id === "ai-video"
+        ? round.id === "video"
+        : round.id === section.id,
+    ),
+  );
 
   useEffect(() => {
     if (view === "final") {
@@ -1098,6 +749,7 @@ export default function PracticeSessionPage() {
             roleName,
             skill,
             difficulty,
+            focusRound,
           },
           userId: user?.id,
           rounds,
@@ -1126,6 +778,7 @@ export default function PracticeSessionPage() {
           roleName,
           skill,
           difficulty,
+          focusRound,
         },
         userId: user?.id,
         rounds,
@@ -1148,6 +801,7 @@ export default function PracticeSessionPage() {
     answeredCount,
     currentQuestionIndex,
     difficulty,
+    focusRound,
     overallAnalytics.totalProgress,
     results,
     roleName,
@@ -1209,6 +863,7 @@ export default function PracticeSessionPage() {
   }, [
     difficulty,
     results,
+    focusRound,
     roleName,
     rounds.length,
     saveAttempted,
@@ -1249,8 +904,18 @@ export default function PracticeSessionPage() {
         <section className="card">
           <p className="error-text">
             {roundError ||
-              "Fresh Gemini questions are not available right now. Try again."}
+              "Questions are not available right now. Try again."}
           </p>
+          <button
+            className="primary-button"
+            type="button"
+            onClick={() => {
+              localStorage.removeItem(PRACTICE_PROGRESS_KEY);
+              setQuestionRetryCount((count) => count + 1);
+            }}
+          >
+            Retry Gemini
+          </button>
         </section>
       )}
 

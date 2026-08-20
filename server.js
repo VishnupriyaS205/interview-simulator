@@ -89,17 +89,24 @@ Do not be harsh.
 Do not assume information that is not present in the answer.`;
 
 const GEMINI_MODEL =
-  process.env.GEMINI_MODEL || "gemini-3.1-flash-lite-preview";
+  process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function isRateLimitError(err) {
+function isRetryableGeminiError(err) {
   const status = err?.status || err?.code || err?.response?.status;
   const message = String(err?.message || "").toLowerCase();
   return (
-    status === 429 || message.includes("429") || message.includes("rate limit")
+    status === 429 ||
+    status === 503 ||
+    message.includes("429") ||
+    message.includes("503") ||
+    message.includes("rate limit") ||
+    message.includes("unavailable") ||
+    message.includes("high demand") ||
+    message.includes("fetch failed")
   );
 }
 
@@ -117,14 +124,14 @@ async function generateGeminiContentWithRetry(key, request) {
       } catch (err) {
         lastError = err;
 
-        if (!isRateLimitError(err) || attempt === GEMINI_MAX_RETRIES) {
+        if (!isRetryableGeminiError(err) || attempt === GEMINI_MAX_RETRIES) {
           throw err;
         }
 
         const delay =
           GEMINI_BASE_DELAY_MS * 2 ** attempt + Math.floor(Math.random() * 250);
         console.warn(
-          `Gemini rate limit hit. Retrying in ${delay}ms (${attempt + 1}/${GEMINI_MAX_RETRIES}).`,
+          `Temporary Gemini error. Retrying in ${delay}ms (${attempt + 1}/${GEMINI_MAX_RETRIES}).`,
         );
         await sleep(delay);
       }
@@ -733,7 +740,7 @@ Do not create coding or technical knowledge questions.`
           ? `Create only open-ended interview speaking questions for AI Interview Analysis.
 Questions should help a candidate explain experience, motivation, debugging, project work, communication, and role fit.
 Do not create multiple-choice questions.`
-        : `Create only technical interview questions based on this role and skill.
+          : `Create only technical interview questions based on this role and skill.
 Role: ${roleName}
 Skill: ${skill}`;
 
@@ -821,7 +828,11 @@ Previous output was invalid. Return strict valid JSON only. Every string value m
                 question: String(item.question || "").trim(),
                 technicalTerms: Array.isArray(item.technicalTerms)
                   ? item.technicalTerms
-                      .map((term) => String(term || "").toLowerCase().trim())
+                      .map((term) =>
+                        String(term || "")
+                          .toLowerCase()
+                          .trim(),
+                      )
                       .filter(Boolean)
                       .slice(0, 3)
                   : [],
@@ -877,12 +888,19 @@ app.get("/api/interview/questions", async (req, res) => {
     skill = "React",
     difficulty = "Easy",
     fallback = "false",
+    focusRound = "",
   } = req.query;
   const allowedDifficulties = ["Easy", "Medium", "Hard"];
+  const allowedRounds = ["aptitude", "english", "technical", "video"];
   const allowDatabaseFallback = fallback === "true";
+  const roundKeys = focusRound ? [focusRound] : allowedRounds;
 
   if (!allowedDifficulties.includes(difficulty)) {
     return res.status(400).json({ error: "Invalid difficulty" });
+  }
+
+  if (focusRound && !allowedRounds.includes(focusRound)) {
+    return res.status(400).json({ error: "Invalid focus round" });
   }
 
   try {
@@ -890,13 +908,11 @@ app.get("/api/interview/questions", async (req, res) => {
       throw new Error("GEMINI_API_KEY is missing");
     }
 
-    const orderedRounds = [];
-
-    for (const roundKey of ["aptitude", "english", "technical", "video"]) {
-      orderedRounds.push(
-        await generateGeminiRound(roundKey, roleName, skill, difficulty),
-      );
-    }
+    const orderedRounds = await Promise.all(
+      roundKeys.map((roundKey) =>
+        generateGeminiRound(roundKey, roleName, skill, difficulty),
+      ),
+    );
 
     res.json({ rounds: orderedRounds, source: "gemini" });
   } catch (err) {
@@ -1386,6 +1402,40 @@ app.get(
             : 0,
         }))
         .sort((a, b) => a.accuracy - b.accuracy);
+      const videoAttempted = roundMap.video?.attempted || 0;
+
+      if (videoAttempted) {
+        const videoScores = sessionScores
+          .filter(
+            (session) =>
+              session.communication_score !== null &&
+              session.technical_score !== null,
+          )
+          .map((session) =>
+            Math.round(
+              (((session.communication_score || 0) +
+                (session.technical_score || 0)) /
+                4) *
+                100,
+            ),
+          );
+        const videoAccuracy = videoScores.length
+          ? Math.round(
+              videoScores.reduce((sum, score) => sum + score, 0) /
+                videoScores.length,
+            )
+          : 0;
+
+        roundStats.push({
+          roundKey: "video",
+          label: roundLabels.video,
+          attempted: videoAttempted,
+          correct: 0,
+          accuracy: videoAccuracy,
+          scoreLabel: `${videoAccuracy}% AI score from ${videoAttempted} answers`,
+        });
+        roundStats.sort((a, b) => a.accuracy - b.accuracy);
+      }
       const weakestRound = roundStats[0];
       const suggestions = [];
       const nextDifficulty =
@@ -1444,6 +1494,7 @@ app.get(
           roleName: latest.role_name,
           skillName: latest.skill_name,
           difficulty: nextDifficulty,
+          focusRound: weakestRound?.roundKey || "",
           focus: weakestRound?.label || "Mixed practice",
           reason: weakestRound
             ? `This is your weakest area at ${weakestRound.accuracy}% accuracy.`
@@ -1794,9 +1845,10 @@ if (process.env.NODE_ENV === "production") {
 const PORT = process.env.PORT || 5000;
 ensureInterviewData()
   .then(() => {
-    app.listen(PORT, "0.0.0.0", () =>
-      console.log(`Backend server listening on http://localhost:${PORT}`),
-    );
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Backend server listening on http://localhost:${PORT}`);
+      console.log(`Gemini model: ${GEMINI_MODEL}`);
+    });
   })
   .catch((err) => {
     console.error("Database setup failed:", err);
