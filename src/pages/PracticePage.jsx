@@ -212,6 +212,9 @@ export default function PracticePage() {
       return;
     }
 
+    localStorage.removeItem(PRACTICE_PROGRESS_KEY);
+    setSavedPractice(null);
+
     navigate("/practice/session", {
       state: {
         roleId: savedSetup.roleId,

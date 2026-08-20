@@ -152,19 +152,27 @@ export default function AnalysisPage() {
 
             {activeSection !== "ai-video" &&
               (groupedAnswers[activeSection]?.length ? (
-                groupedAnswers[activeSection].map((answer, index) => (
-                  <article
-                    className="explanation-item"
-                    key={`${answer.question_text}-${index}`}
-                  >
-                    <strong>
-                      {index + 1}. {answer.question_text}
-                    </strong>
-                    <p>Your answer: {answer.user_answer}</p>
-                    <p>Correct answer: {answer.correct_answer}</p>
-                    <p>{answer.explanation}</p>
-                  </article>
-                ))
+                groupedAnswers[activeSection].map((answer, index) => {
+                  const needsReview =
+                    answer.user_answer !== answer.correct_answer;
+
+                  return (
+                    <article
+                      className="explanation-item"
+                      key={`${answer.question_text}-${index}`}
+                    >
+                      <strong>
+                        {index + 1}. {answer.question_text}
+                      </strong>
+                      <p>Your answer: {answer.user_answer}</p>
+                      <p>Correct answer: {answer.correct_answer}</p>
+                      {needsReview && (
+                        <p className="error-text">Need review</p>
+                      )}
+                      <p>{answer.explanation}</p>
+                    </article>
+                  );
+                })
               ) : (
                 <p className="muted">No saved details for this section.</p>
               ))}

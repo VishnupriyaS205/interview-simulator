@@ -540,6 +540,8 @@ function getNextStepSuggestion(results, percentage, skill, difficulty) {
     : `Practice fundamentals first, then try the same setup again.`;
 }
 
+// Local fallback questions are intentionally disabled so fresh practice uses Gemini only.
+// eslint-disable-next-line no-unused-vars
 function buildPracticeRounds(roleName, skill, difficulty) {
   return [
     {
@@ -598,15 +600,10 @@ export default function PracticeSessionPage() {
   const difficulty =
     savedProgress?.setup?.difficulty || state?.difficulty || "Easy";
 
-  const fallbackRounds = useMemo(
-    () => buildPracticeRounds(roleName, skill, difficulty),
-    [difficulty, roleName, skill],
-  );
-
   const [rounds, setRounds] = useState(() =>
     savedProgress?.rounds
       ? normalizeSavedRounds(savedProgress.rounds)
-      : buildPracticeRounds(roleName, skill, difficulty),
+      : [],
   );
   const [roundIndex, setRoundIndex] = useState(savedProgress?.roundIndex || 0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(
@@ -650,14 +647,12 @@ export default function PracticeSessionPage() {
         roleName,
         skill,
         difficulty,
+        requestId: Date.now().toString(),
       });
 
       try {
         const data = await fetchInterviewQuestionsOnce(params);
         const aiRounds = data.rounds || [];
-        const fallbackAnalysisRound = fallbackRounds.find(
-          (round) => round.id === "video",
-        );
         const orderedRounds = ["aptitude", "english", "technical", "video"]
           .map((roundId) => aiRounds.find((round) => round.id === roundId))
           .filter(Boolean);
@@ -668,40 +663,34 @@ export default function PracticeSessionPage() {
               ? round.questions.length === 5
               : round.questions.length === 15,
           );
-        const nonVideoRounds = orderedRounds.filter(
-          (round) => round.id !== "video",
-        );
-        const mixedRounds =
-          nonVideoRounds.length === 3 && fallbackAnalysisRound
-            ? [...nonVideoRounds, fallbackAnalysisRound]
-            : fallbackRounds;
 
-        setRounds(
-          hasAiRounds
-            ? [
-                orderedRounds[0],
-                orderedRounds[1],
-                orderedRounds[2],
-                {
-                  ...orderedRounds[3],
-                  type: "video",
-                  questions: orderedRounds[3].questions.map((question) => ({
-                    ...question,
-                    type: "video",
-                    options: [],
-                    answer: "Structured interview answer",
-                    explanation:
-                      question.explanation ||
-                      "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
-                  })),
-                },
-              ]
-            : mixedRounds,
-        );
+        if (!hasAiRounds) {
+          throw new Error("Gemini did not return all four fresh rounds.");
+        }
+
+        setRounds([
+          orderedRounds[0],
+          orderedRounds[1],
+          orderedRounds[2],
+          {
+            ...orderedRounds[3],
+            type: "video",
+            questions: orderedRounds[3].questions.map((question) => ({
+              ...question,
+              type: "video",
+              options: [],
+              answer: "Structured interview answer",
+              explanation:
+                question.explanation ||
+                "A strong interview answer uses clear structure, enough detail, and role-specific technical words.",
+            })),
+          },
+        ]);
       } catch (err) {
         console.error("Interview Questions Fetch Error:", err);
+        setRounds([]);
         setRoundError(
-          "Could not load AI questions. Check Gemini setup and restart the backend.",
+          "Could not load fresh Gemini questions. Try Start Fresh Practice again.",
         );
       } finally {
         setRoundIndex(0);
@@ -718,9 +707,10 @@ export default function PracticeSessionPage() {
     };
 
     fetchInterviewQuestions();
-  }, [difficulty, fallbackRounds, roleName, savedProgress, skill]);
+  }, [difficulty, roleName, savedProgress, skill]);
 
-  const activeRound = rounds[roundIndex];
+  const emptyRound = useMemo(() => ({ id: "", title: "", questions: [] }), []);
+  const activeRound = rounds[roundIndex] || emptyRound;
   const currentQuestion = activeRound.questions[currentQuestionIndex];
   const isVideoRound = activeRound.type === "video";
   const activeAnswers = useMemo(
@@ -1237,7 +1227,7 @@ export default function PracticeSessionPage() {
             ? "Report View"
             : view === "review"
               ? `Round score: ${score} / ${activeRound.questions.length}`
-              : activeRound.title
+              : activeRound.title || "Generating questions"
         }
         description={`${roleName} interview for ${skill} at ${difficulty} level.`}
         actions={
@@ -1250,12 +1240,21 @@ export default function PracticeSessionPage() {
       {isLoadingQuestions && (
         <section className="card">
           <p className="status-text">
-            Generating fresh AI aptitude questions...
+            Generating fresh Gemini interview questions...
           </p>
         </section>
       )}
 
-      {!isLoadingQuestions && view === "questions" && (
+      {!isLoadingQuestions && view === "questions" && rounds.length === 0 && (
+        <section className="card">
+          <p className="error-text">
+            {roundError ||
+              "Fresh Gemini questions are not available right now. Try again."}
+          </p>
+        </section>
+      )}
+
+      {!isLoadingQuestions && view === "questions" && rounds.length > 0 && (
         <section className="interview-grid">
           <article className="card question-card">
             <div className="round-meta">
@@ -1570,6 +1569,8 @@ export default function PracticeSessionPage() {
                     {result.questions.map((question, index) => {
                       const answer = result.answers[index] || "Not answered";
                       const isVideoQuestion = question.type === "video";
+                      const needsReview =
+                        !isVideoQuestion && answer !== question.answer;
 
                       return (
                         <article
@@ -1587,6 +1588,9 @@ export default function PracticeSessionPage() {
                           </p>
                           {!isVideoQuestion && (
                             <p>Correct answer: {question.answer}</p>
+                          )}
+                          {needsReview && (
+                            <p className="error-text">Need review</p>
                           )}
                           <p>
                             {isVideoQuestion
